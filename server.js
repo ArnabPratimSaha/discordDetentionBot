@@ -17,6 +17,10 @@ client.on('message', msg => {
         if (massageArray[0]===code1) {
             return detention(client,msg,massageArray);
         }
+        else
+        {
+            msg.reply("wrong command");
+        }
     }
 });
 

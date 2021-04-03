@@ -1,57 +1,221 @@
 const Discord = require('discord.js');
 const rightReaction="✔️";
-const wrorngReaction="❌";
+const wrongReaction="❌";
+const voteTime=.1;//in min
 //function for creating a embeded massage
-const embedMassage=massageArray=>
+const embedMassage=(massageArray)=>
 {
-    var embedMassage=new Discord.MessageEmbed();
-    embedMassage.addField("voting against",massageArray[1])
+    var embedMassage = new Discord.MessageEmbed();
     embedMassage.setTitle("voting for detention");
+    embedMassage.addField(
+      "VOTE",
+      `Casting A Pole Against [${massageArray[1]}]`
+    );
     embedMassage.setColor("GREY");
-    const massageOption={
-        embed:embedMassage
-    }
+    embedMassage.setDescription(
+      `Casting a vote against ${massageArray[1]}.\nThis vote will last for ${voteTime} minutes.\nPress ${rightReaction} in favour of the vote and press ${wrongReaction} against the vote`
+    );
+    const massageOption = {
+      embed: embedMassage,
+    };
     return massageOption;
 }
 //function for checking reaction count
 const returnResponse=reaction=>
 {
     const reactionResult=[];
-    for (let i = 0; i < reaction.length; i++) {
+    for (let i = 0; i < 2; i++) {
         const element = reaction[i];
-        reactionResult.push( element.count);
+        reactionResult.push(element.count-1);
     }
     return reactionResult;
 }
+//find non bot active user in a channel
+const activeUsers=msg=>
+{
+    var activeMembers=[];
+    var channelMember=msg.member.voice.channel.members.array();
+    for (let i = 0; i < channelMember.length; i++) {
+        const element = channelMember[i];
+        if(!element.user.bot)
+        {
+            activeMembers.push(element);
+        }
+    }
+    return activeMembers;
+}
+//function for mention massage
+const mentionMessage=(msg,massage)=>
+{
+    var finalArray=[];
+    var mentionArray=activeUsers(msg);
+    for (let i = 0; i < mentionArray.length; i++) {
+        const element = mentionArray[i];
+        if(element.id!=msg.mentions.users.array()[0].id)
+        {
+            finalArray.push(element);
+        }
+    }
+    return `${massage} ${finalArray.toString()}`;
+}
+const findInOrOppositeOfFavour=(msg,isInFavour)=>
+{
+    let finalArray=[];
+    const reactionArray=msg.reactions.cache.array();
+    for (let i = 0; i < 2; i++) {
+        const element = reactionArray[i];
+        if (isInFavour) {
+            if(element.emoji.name===rightReaction)
+            {
+               const inFavourArray=element.users.cache.array();
+               for (let j = 0; j < inFavourArray.length; j++) {
+                    const e = inFavourArray[j];
+                    if(!e.bot)
+                    {
+                        finalArray.push(e);
+                    }
+               }
+            }
+        }
+        else
+        {
+            if(element.emoji.name===wrongReaction)
+            {
+               const inAgainstArray=element.users.cache.array();
+               for (let j = 0; j < inAgainstArray.length; j++) {
+                    const e = inAgainstArray[j];
+                    if(!e.bot)
+                    {
+                        finalArray.push(e);
+                    }
+               }
+            }
+        }
+    }
+    return finalArray;
+}
 const detention=async(client,msg,massageArray)=>
 {
-    if(massageArray.length<2)
+    if(msg.mentions.users.array().length===0)
     {
-        return msg.reply("Worng Command");
+        return msg.reply("You have to mention someone");
     }
-    else if(massageArray.length>3)
+    else if(!msg.member.voice.channel)
     {
-        return msg.reply("You can only one detention pole at a time");
+        return msg.reply("You have to be in a voice channel");
     }
+    else if(msg.mentions.users.array().length>1 || msg.mentions.everyone)
+    {
+        return msg.reply("You can only vote for one detention pole at a time");
+    }
+    else if(msg.mentions.channels.array().length!=0)
+    {
+        return msg.reply("You can not cast a vote for a channel");
+    }
+    else if(msg.mentions.roles.array().length!=0)
+    {
+        return msg.reply("You can not cast a vote for a role");
+    }
+    else if(msg.mentions.users.array()[0].bot)
+    {
+        return msg.reply("You can not cast a vote for a bot");
+    }
+    else if(msg.member.voice.channelID!=msg.guild.member(msg.mentions.users.array()[0]).voice.channelID)
+    {
+        return msg.reply(`You and ${msg.mentions.users.array()[0].username} has to be in a same voice channel`);
+    }
+    // else if(activeUsers(msg).length<=2)
+    // {
+    //     return msg.reply(`You need more the 2 persons(non bot) int he voice channel to create a pole`);
+    // }
     else
     {
         try {
-            const promise=await msg.channel.send("Vote Time @everyone",embedMassage(massageArray));
+            const promise=await msg.channel.send(mentionMessage(msg,"VOTE TIME"),embedMassage(massageArray));
             await promise.react(rightReaction);
-            await promise.react(wrorngReaction);
-            setTimeout(() => {
+            await promise.react(wrongReaction);
+            //added a event on the reactions
+            client.on("messageReactionAdd",(messageReaction,user)=>
+            {
+                if(user.id===msg.mentions.users.array()[0].id)
+                {
+                    messageReaction.users.remove(user.id);
+                }
+            });
+            setTimeout(async() => {
                 reaction=promise.reactions.cache.array();
+                try {
+                    await msg.delete();
+                    await promise.delete();
+                    
+                } catch (error) {
+                    console.error(error);
+                }
                 if (returnResponse(reaction)[0]>returnResponse(reaction)[1]) {
                     //detetion
-                    console.log("detention");
+                    var embedMassage = new Discord.MessageEmbed();
+                    embedMassage.setTitle("voting for detention");
+                    embedMassage.setColor("GREEN");
+                    embedMassage.setDescription(
+                    `\n${msg.mentions.users.array()[0].username.toUpperCase()} is now detained.\n`+
+                    `Infavour:${findInOrOppositeOfFavour(promise,true)}.\n`+
+                    `InAgainst:${findInOrOppositeOfFavour(promise,false)}`+
+                    `\n\nThis message will delete in ${voteTime} min.\n`
+                    );
+                    const massageOption = {
+                    embed: embedMassage,
+                    };
+                    const voteLoseMassage=await msg.channel.send(mentionMessage(msg,"VOTE WON"),massageOption);
+                    //defen and mute the user
+                    const victim=msg.guild.member(msg.mentions.users.array()[0]);
+                    try {
+                        await victim.voice.setMute(true);
+                        await victim.voice.setDeaf(true);
+                        let nickName=victim.nickname || victim.user.username;
+                        await victim.edit({nick:"i am bad boy"});
+                        
+                    } catch (error) {
+                        console.error(error);
+                    }
+                    setTimeout(async() => {
+                        try {
+                            await voteLoseMassage.delete();
+                            await victim.voice.setMute(false);
+                            await victim.voice.setDeaf(false);
+                            await victim.edit({nick:nickName});
+                            
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }, voteTime*60*1000);
                 }
                 else
                 {
                     //no detention
-                    console.log("no detention");
+                    var embedMassage = new Discord.MessageEmbed();
+                    embedMassage.setTitle("voting for detention");
+                    embedMassage.setColor("RED");
+                    embedMassage.setDescription(
+                    `Casted vote against ${massageArray[1]} was lost.`+
+                    `\n${msg.mentions.users.array()[0].username.toUpperCase()} is spared.\n`+
+                    `Infavour:${findInOrOppositeOfFavour(promise,true)}.\n`+
+                    `InAgainst:${findInOrOppositeOfFavour(promise,false)}`+
+                    `\n\nThis message will delete in ${voteTime} min.\n`
+                    );
+                    const massageOption = {
+                    embed: embedMassage,
+                    };
+                    const voteLoseMassage=await msg.channel.send(mentionMessage(msg,"VOTE LOST"),massageOption);
+                    setTimeout(async() => {
+                        try {
+                            await voteLoseMassage.delete();
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }, voteTime*60*1000);
                 }
                 
-            }, 5000);
+            }, voteTime*60*1000);
         } catch (error) {
             console.log(error);
         }
