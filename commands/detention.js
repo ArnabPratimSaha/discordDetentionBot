@@ -183,7 +183,7 @@ const detention=async(client,msg,massageArray)=>
                     try {
                         await victim.voice.setMute(true);
                         await victim.voice.setDeaf(true);
-                        await victim.edit({nick:"i am bad boy"});
+                        // await victim.edit({nick:"i am bad boy"});
                         
                     } catch (error) {
                         console.error(error);
@@ -193,7 +193,7 @@ const detention=async(client,msg,massageArray)=>
                             await voteLoseMassage.delete();
                             await victim.voice.setMute(false);
                             await victim.voice.setDeaf(false);
-                            await victim.edit({nick:nickName});
+                            // await victim.edit({nick:nickName});
                             
                         } catch (error) {
                             console.error(error);
