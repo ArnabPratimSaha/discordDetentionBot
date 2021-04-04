@@ -1,7 +1,5 @@
 const Discord = require('discord.js');
-const rightReaction="✔️";
-const wrongReaction="❌";
-const voteTime=.1;//in min
+let {rightReaction,wrongReaction,voteTime,detentionTime}=require("../config/detentionConfig");
 //function for creating a embeded massage
 const embedMassage=(massageArray)=>
 {
@@ -58,6 +56,7 @@ const mentionMessage=(msg,massage)=>
     }
     return `${massage} ${finalArray.toString()}`;
 }
+//function to find users in favour or opposite of the vote
 const findInOrOppositeOfFavour=(msg,isInFavour)=>
 {
     let finalArray=[];
@@ -94,6 +93,17 @@ const findInOrOppositeOfFavour=(msg,isInFavour)=>
     }
     return finalArray;
 }
+//function to find the targeted victim
+const findUser=(arr,target)=>
+{
+    for (let i = 0; i < arr.length; i++) {
+        const e = arr[i];
+        if (e.user.id===target.id) {
+            return true;
+        }
+    }
+    return false;
+}  
 const detention=async(client,msg,massageArray)=>
 {
     if(msg.mentions.users.array().length===0)
@@ -137,7 +147,8 @@ const detention=async(client,msg,massageArray)=>
             //added a event on the reactions
             client.on("messageReactionAdd",(messageReaction,user)=>
             {
-                if(user.id===msg.mentions.users.array()[0].id)
+                var users=activeUsers(msg);
+                if(user.id===msg.mentions.users.array()[0].id || !findUser(users,user))
                 {
                     messageReaction.users.remove(user.id);
                 }
@@ -160,7 +171,7 @@ const detention=async(client,msg,massageArray)=>
                     `\n${msg.mentions.users.array()[0].username.toUpperCase()} is now detained.\n`+
                     `Infavour:${findInOrOppositeOfFavour(promise,true)}.\n`+
                     `InAgainst:${findInOrOppositeOfFavour(promise,false)}`+
-                    `\n\nThis message will delete in ${voteTime} min.\n`
+                    `\n\nThis message will delete in ${detentionTime} min.\n`
                     );
                     const massageOption = {
                     embed: embedMassage,
@@ -168,10 +179,10 @@ const detention=async(client,msg,massageArray)=>
                     const voteLoseMassage=await msg.channel.send(mentionMessage(msg,"VOTE WON"),massageOption);
                     //defen and mute the user
                     const victim=msg.guild.member(msg.mentions.users.array()[0]);
+                    let nickName=victim.nickname || victim.user.username;
                     try {
                         await victim.voice.setMute(true);
                         await victim.voice.setDeaf(true);
-                        let nickName=victim.nickname || victim.user.username;
                         await victim.edit({nick:"i am bad boy"});
                         
                     } catch (error) {
@@ -187,7 +198,7 @@ const detention=async(client,msg,massageArray)=>
                         } catch (error) {
                             console.error(error);
                         }
-                    }, voteTime*60*1000);
+                    }, detentionTime*60*1000);
                 }
                 else
                 {
