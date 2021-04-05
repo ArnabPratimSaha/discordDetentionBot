@@ -11,7 +11,8 @@ const embedMassage=(massageArray)=>
     );
     embedMassage.setColor("GREY");
     embedMassage.setDescription(
-      `Casting a vote against ${massageArray[1]}.\nThis vote will last for ${voteTime} minutes.\nPress ${rightReaction} in favour of the vote and press ${wrongReaction} against the vote`
+      `Casting a vote against ${massageArray[1]}.\nThis vote will last for ${voteTime} minutes.\nPress ${rightReaction} in favour of the vote and press ${wrongReaction} against the vote`+
+      `\n75% of the members have to cast this vote`
     );
     const massageOption = {
       embed: embedMassage,
@@ -32,12 +33,15 @@ const returnResponse=reaction=>
 const activeUsers=msg=>
 {
     var activeMembers=[];
-    var channelMember=msg.member.voice.channel.members.array();
-    for (let i = 0; i < channelMember.length; i++) {
-        const element = channelMember[i];
-        if(!element.user.bot)
-        {
-            activeMembers.push(element);
+    if(msg.member.voice.channel)
+    {
+        var channelMember=msg.member.voice.channel.members.array();
+        for (let i = 0; i < channelMember.length; i++) {
+            const element = channelMember[i];
+            if(!element.user.bot)
+            {
+                activeMembers.push(element);
+            }
         }
     }
     return activeMembers;
@@ -145,9 +149,9 @@ const detention=async(client,msg,massageArray)=>
             promise.react(rightReaction);
             await promise.react(wrongReaction);
             //added a event on the reactions
+            var users=activeUsers(msg);
             client.on("messageReactionAdd",(messageReaction,user)=>
             {
-                var users=activeUsers(msg);
                 if(user.bot)
                 {}
                 else if(user.id===msg.mentions.users.array()[0].id || !findUser(users,user))
@@ -164,7 +168,16 @@ const detention=async(client,msg,massageArray)=>
                 } catch (error) {
                     console.error(error);
                 }
-                if (returnResponse(reaction)[0]>returnResponse(reaction)[1]) {
+                var finalArray=[];
+                var mentionArray=activeUsers(msg);
+                for (let i = 0; i < mentionArray.length; i++) {
+                    const element = mentionArray[i];
+                    if(element.id!=msg.mentions.users.array()[0].id)
+                    {
+                        finalArray.push(element);
+                    }
+                }
+                if ((returnResponse(reaction)[0]+returnResponse(reaction)[1])>=Math.floor(finalArray.length*.75) && returnResponse(reaction)[0]>returnResponse(reaction)[1]) {
                     //detetion
                     var embedMassage = new Discord.MessageEmbed();
                     embedMassage.setTitle("voting for detention");
