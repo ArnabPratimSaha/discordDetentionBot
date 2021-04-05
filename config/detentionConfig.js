@@ -13,8 +13,8 @@ const defDetentionTime=5;//in min
 
 var rightReaction="✔️";
 var wrongReaction="❌";
-var voteTime=1;//in min
-var detentionTime=5;//in min
+var voteTime=.1;//in min
+var detentionTime=.1;//in min
 
 const manageConfig=(config,change)=>
 {

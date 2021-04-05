@@ -142,13 +142,15 @@ const detention=async(client,msg,massageArray)=>
     {
         try {
             const promise=await msg.channel.send(mentionMessage(msg,"VOTE TIME"),embedMassage(massageArray));
-            await promise.react(rightReaction);
+            promise.react(rightReaction);
             await promise.react(wrongReaction);
             //added a event on the reactions
             client.on("messageReactionAdd",(messageReaction,user)=>
             {
                 var users=activeUsers(msg);
-                if(user.id===msg.mentions.users.array()[0].id || !findUser(users,user))
+                if(user.bot)
+                {}
+                else if(user.id===msg.mentions.users.array()[0].id || !findUser(users,user))
                 {
                     messageReaction.users.remove(user.id);
                 }
